@@ -9,7 +9,6 @@ export default function DualTimerLane({
   nextSuggestedId = 'TIM-005',
   onSaveParticipant,
   onShowToast,
-  onPlayBeep,
 }) {
   const [elapsedMs, setElapsedMs] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
@@ -18,9 +17,7 @@ export default function DualTimerLane({
 
   const [participantId, setParticipantId] = useState('');
   const [teamName, setTeamName] = useState('');
-  const [round1Score, setRound1Score] = useState(80);
-  const [round2Score, setRound2Score] = useState(15);
-  const [customStatus, setCustomStatus] = useState('Otomatis');
+
 
   const intervalRef = useRef(null);
   const startTimeRef = useRef(0);
@@ -47,7 +44,6 @@ export default function DualTimerLane({
       return;
     }
     if (!isRunning) {
-      onPlayBeep?.(660, 0.08);
       startTimeRef.current = Date.now() - elapsedMs;
       intervalRef.current = setInterval(() => {
         setElapsedMs(Date.now() - startTimeRef.current);
@@ -59,7 +55,6 @@ export default function DualTimerLane({
 
   const handlePause = () => {
     if (isRunning) {
-      onPlayBeep?.(440, 0.08);
       clearInterval(intervalRef.current);
       intervalRef.current = null;
       setIsRunning(false);
@@ -78,12 +73,7 @@ export default function DualTimerLane({
   const handleClearInputs = () => {
     setParticipantId('');
     setTeamName('');
-    setRound1Score(80);
-    setRound2Score(15);
-    setCustomStatus('Otomatis');
   };
-
-  const computedTotalScore = (Number(round1Score) || 0) + (Number(round2Score) || 0);
 
   const handleSave = () => {
     if (isFrozen) {
@@ -121,15 +111,11 @@ export default function DualTimerLane({
     onSaveParticipant({
       participantId: finalId,
       team: trimmedTeam,
-      round1Score: Number(round1Score) || 0,
-      round2Score: Number(round2Score) || 0,
-      totalScore: computedTotalScore,
       timeMs: elapsedMs,
       timeStr: formatTimeMs(elapsedMs),
-      customStatus,
+      customStatus: 'Otomatis',
     });
 
-    onPlayBeep?.(880, 0.12);
     handleReset();
     handleClearInputs();
   };
@@ -258,42 +244,6 @@ export default function DualTimerLane({
           </div>
         </div>
 
-        {/* Input Poin Ronde/Sesi & Total Skor */}
-        <div className="grid grid-cols-3 gap-2 pt-1">
-          <div>
-            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-              Skor Sesi 1
-            </label>
-            <input
-              type="number"
-              disabled={isFrozen}
-              value={round1Score}
-              onChange={(e) => setRound1Score(e.target.value)}
-              className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 dark:disabled:bg-slate-800/40"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-              Skor Sesi 2
-            </label>
-            <input
-              type="number"
-              disabled={isFrozen}
-              value={round2Score}
-              onChange={(e) => setRound2Score(e.target.value)}
-              className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 dark:disabled:bg-slate-800/40"
-            />
-          </div>
-          <div>
-            <label className="block text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase mb-1">
-              Total Skor
-            </label>
-            <div className="w-full px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 rounded-lg text-sm font-extrabold text-indigo-700 dark:text-indigo-300 text-center">
-              {computedTotalScore}
-            </div>
-          </div>
-        </div>
-
         {/* Tombol Aksi Simpan & Reset Input */}
         <div className="flex items-center gap-2 pt-1">
           <button
@@ -301,9 +251,9 @@ export default function DualTimerLane({
             disabled={isFrozen}
             onClick={handleSave}
             className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 dark:disabled:bg-slate-800 disabled:text-slate-500 text-white py-2.5 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
-            title="Simpan Skor & Waktu ke Leaderboard"
+            title="Simpan Waktu ke Leaderboard"
           >
-            <i className="fa-solid fa-check"></i> Simpan Skor &amp; Waktu
+            <i className="fa-solid fa-check"></i> Simpan Waktu
           </button>
           <button
             type="button"

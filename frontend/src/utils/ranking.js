@@ -26,16 +26,12 @@ export function parseTimeStrToMs(timeStr) {
 }
 
 /**
- * Mengurutkan peserta sesuai PRD 5.2:
- * 1. Berdasarkan Total Skor tertinggi (Descending)
- * 2. Tie-breaker: Waktu penyelesaian tercepat / terkecil (Ascending)
- * 3. Menentukan peringkat (1, 2, 3...) dan Status (Pemenang / Lolos / Gugur)
+ * Peringkat HANYA berdasarkan kecepatan (waktu tercepat = peringkat 1).
+ * Status otomatis: peringkat 1 = Pemenang, lainnya = Lolos.
+ * Admin dapat menimpa status secara manual (Pemenang / Lolos / Gugur).
  */
-export function calculateLeaderboard(participants = [], passingScore = 60) {
+export function calculateLeaderboard(participants = []) {
   const sorted = [...participants].sort((a, b) => {
-    const scoreDiff = (Number(b.totalScore) || 0) - (Number(a.totalScore) || 0);
-    if (scoreDiff !== 0) return scoreDiff;
-    // Tie-breaker: waktu penyelesaian tercepat (timeMs lebih kecil menang)
     const timeA = a.timeMs > 0 ? a.timeMs : Number.MAX_SAFE_INTEGER;
     const timeB = b.timeMs > 0 ? b.timeMs : Number.MAX_SAFE_INTEGER;
     return timeA - timeB;
@@ -43,26 +39,17 @@ export function calculateLeaderboard(participants = [], passingScore = 60) {
 
   return sorted.map((item, idx) => {
     const rank = idx + 1;
-    const totalScore = Number(item.totalScore) || 0;
 
     let computedStatus = item.customStatus;
     if (!computedStatus || computedStatus === 'Otomatis') {
-      if (rank === 1 && totalScore >= passingScore) {
-        computedStatus = 'Pemenang';
-      } else if (totalScore >= passingScore) {
-        computedStatus = 'Lolos';
-      } else {
-        computedStatus = 'Gugur';
-      }
+      computedStatus = rank === 1 ? 'Pemenang' : 'Lolos';
     }
 
     return {
       ...item,
       rank,
-      totalScore,
       timeStr: item.timeStr || formatTimeMs(item.timeMs),
       status: computedStatus,
     };
   });
 }
-

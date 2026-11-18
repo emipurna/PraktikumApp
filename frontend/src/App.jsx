@@ -11,9 +11,6 @@ const INITIAL_DB = {
       id: 'p-1',
       participantId: 'TIM-001',
       team: 'Kelompok Alpha',
-      round1Score: 50,
-      round2Score: 45,
-      totalScore: 95,
       timeMs: 65500,
       timeStr: '01:05:500',
       customStatus: 'Otomatis',
@@ -22,9 +19,6 @@ const INITIAL_DB = {
       id: 'p-2',
       participantId: 'TIM-002',
       team: 'Kelompok Beta',
-      round1Score: 45,
-      round2Score: 42,
-      totalScore: 87,
       timeMs: 72000,
       timeStr: '01:12:000',
       customStatus: 'Otomatis',
@@ -33,9 +27,6 @@ const INITIAL_DB = {
       id: 'p-3',
       participantId: 'TIM-003',
       team: 'Kelompok Charlie',
-      round1Score: 40,
-      round2Score: 38,
-      totalScore: 78,
       timeMs: 78500,
       timeStr: '01:18:500',
       customStatus: 'Otomatis',
@@ -44,9 +35,6 @@ const INITIAL_DB = {
       id: 'p-4',
       participantId: 'TIM-004',
       team: 'Kelompok Delta',
-      round1Score: 30,
-      round2Score: 25,
-      totalScore: 55,
       timeMs: 95000,
       timeStr: '01:35:000',
       customStatus: 'Otomatis',
@@ -57,9 +45,6 @@ const INITIAL_DB = {
       id: 'p-201',
       participantId: 'TIM-101',
       team: 'Tim RoboNova',
-      round1Score: 48,
-      round2Score: 46,
-      totalScore: 94,
       timeMs: 68200,
       timeStr: '01:08:200',
       customStatus: 'Otomatis',
@@ -68,9 +53,6 @@ const INITIAL_DB = {
       id: 'p-202',
       participantId: 'TIM-102',
       team: 'Tim CyberMecha',
-      round1Score: 46,
-      round2Score: 40,
-      totalScore: 86,
       timeMs: 74900,
       timeStr: '01:14:900',
       customStatus: 'Otomatis',
@@ -86,7 +68,6 @@ const INITIAL_STATUS = {
 export default function App() {
   const [view, setView] = useState('user'); // 'user' | 'login' | 'admin'
   const [activeTab, setActiveTab] = useState('lb1');
-  const [soundEnabled, setSoundEnabled] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
@@ -144,13 +125,11 @@ export default function App() {
         : {
             eventName: 'Kompetisi_UAS_Robotika',
             eventDate: '2026-11-13',
-            passingScore: 60,
           };
     } catch {
       return {
         eventName: 'Kompetisi_UAS_Robotika',
         eventDate: '2026-11-13',
-        passingScore: 60,
       };
     }
   });
@@ -190,26 +169,6 @@ export default function App() {
     }, 3200);
   };
 
-  const playBeep = (freq = 600, duration = 0.08) => {
-    if (!soundEnabled) return;
-    try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, ctx.currentTime);
-      gain.gain.setValueAtTime(0.08, ctx.currentTime);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + duration);
-    } catch {
-      // ignore audio context restrictions
-    }
-  };
-
   const currentParticipants = database[activeTab] || [];
   const currentMatchStatus = matchStatusByBoard[activeTab] || 'belum_mulai';
 
@@ -235,7 +194,6 @@ export default function App() {
 
   const handleLoginSuccess = (username) => {
     setView('admin');
-    playBeep(780, 0.1);
     showToast(`✅ Login Berhasil! Selamat datang ${username}.`);
   };
 
@@ -246,22 +204,19 @@ export default function App() {
     }));
 
     if (newStatus === 'berlangsung') {
-      playBeep(700, 0.12);
-      showToast('🚀 Pertandingan dimulai! Input skor & timer aktif.');
+      showToast('🚀 Pertandingan dimulai! Timer & input waktu aktif.');
     } else if (newStatus === 'jeda') {
-      playBeep(440, 0.12);
       showToast('⏸️ Pertandingan dijeda sementara.');
     } else if (newStatus === 'selesai') {
-      playBeep(920, 0.18);
       showToast(
-        '🏁 Pertandingan Selesai! Skor telah dikunci (Freeze Data) & peringkat akhir telah diurutkan.'
+        '🏁 Pertandingan Selesai! Data telah dikunci (Freeze Data) & peringkat akhir diurutkan berdasarkan kecepatan.'
       );
     }
   };
 
   const handleAddParticipant = (newParticipant) => {
     if (currentMatchStatus === 'selesai') {
-      showToast('🔒 Pertandingan telah Selesai. Penambahan skor dinonaktifkan!');
+      showToast('🔒 Pertandingan telah Selesai. Penambahan data dinonaktifkan!');
       return;
     }
 
@@ -276,7 +231,7 @@ export default function App() {
     }));
 
     const boardLabel = activeTab === 'lb1' ? 'Leaderboard 1' : 'Leaderboard 2';
-    showToast(`✅ Skor & waktu ${entry.team} berhasil disimpan ke ${boardLabel}!`);
+    showToast(`✅ Waktu ${entry.team} berhasil disimpan ke ${boardLabel}!`);
   };
 
   const handleUpdateParticipant = (id, updatedFields) => {
@@ -326,10 +281,8 @@ export default function App() {
         eventName: eventConfig.eventName,
         eventDate: eventConfig.eventDate,
         participants: currentParticipants,
-        passingScore: Number(eventConfig.passingScore) || 60,
       });
 
-      playBeep(880, 0.12);
       showToast(`✅ File ${result.fileName} berhasil diunduh!`);
     } catch (err) {
       console.error(err);
@@ -349,11 +302,6 @@ export default function App() {
         onToggleAuthView={handleToggleAuthView}
         darkMode={darkMode}
         onToggleDarkMode={handleToggleDarkMode}
-        soundEnabled={soundEnabled}
-        onToggleSound={() => {
-          setSoundEnabled((prev) => !prev);
-          showToast(!soundEnabled ? '🔊 Efek suara diaktifkan' : '🔇 Efek suara dinonaktifkan');
-        }}
         eventConfig={eventConfig}
         matchStatus={currentMatchStatus}
         onOpenSettings={() => setShowSettingsModal(true)}
@@ -366,10 +314,7 @@ export default function App() {
             activeTab={activeTab}
             participants={currentParticipants}
             matchStatus={currentMatchStatus}
-            passingScore={Number(eventConfig.passingScore) || 60}
             eventConfig={eventConfig}
-            onDownloadExcel={handleDownloadExcel}
-            isDownloading={isDownloading}
           />
         )}
 
@@ -385,7 +330,6 @@ export default function App() {
             activeTab={activeTab}
             participants={currentParticipants}
             matchStatus={currentMatchStatus}
-            passingScore={Number(eventConfig.passingScore) || 60}
             onChangeMatchStatus={handleChangeMatchStatus}
             onAddParticipant={handleAddParticipant}
             onUpdateParticipant={handleUpdateParticipant}
@@ -393,7 +337,6 @@ export default function App() {
             onDownloadExcel={handleDownloadExcel}
             isDownloading={isDownloading}
             onShowToast={showToast}
-            onPlayBeep={playBeep}
           />
         )}
       </main>
@@ -433,7 +376,7 @@ export default function App() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
                     Tanggal Event
@@ -445,22 +388,6 @@ export default function App() {
                       setEventConfig((prev) => ({ ...prev, eventDate: e.target.value }))
                     }
                     className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
-                    Ambang Skor Lolos
-                  </label>
-                  <input
-                    type="number"
-                    value={eventConfig.passingScore}
-                    onChange={(e) =>
-                      setEventConfig((prev) => ({
-                        ...prev,
-                        passingScore: Number(e.target.value) || 0,
-                      }))
-                    }
-                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
                   />
                 </div>
               </div>

@@ -5,15 +5,12 @@ export default function SpectatorView({
   activeTab,
   participants,
   matchStatus,
-  passingScore,
   eventConfig,
-  onDownloadExcel,
-  isDownloading,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [displayMode, setDisplayMode] = useState('table'); // 'table' | 'card'
 
-  const rankedData = calculateLeaderboard(participants, passingScore);
+  const rankedData = calculateLeaderboard(participants);
   const filteredData = rankedData.filter(
     (item) =>
       item.team.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -86,7 +83,7 @@ export default function SpectatorView({
                 Pertandingan Telah Selesai — Peringkat Akhir Resmi Terkunci
               </h4>
               <p className="text-xs text-emerald-100">
-                Seluruh skor telah dikalkulasi otomatis berdasarkan Total Skor tertinggi &amp; waktu tercepat.
+                Peringkat telah dihitung otomatis berdasarkan waktu tercepat.
               </p>
             </div>
           </div>
@@ -138,7 +135,7 @@ export default function SpectatorView({
             Papan Peringkat Kelompok Praktikum
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Urutan otomatis berdasarkan Total Skor Tertinggi &amp; Tie-Breaker Waktu Tercepat
+            Urutan otomatis berdasarkan Waktu Tercepat
           </p>
         </div>
       </div>
@@ -155,7 +152,7 @@ export default function SpectatorView({
             </span>
             {matchStatus === 'selesai' ? (
               <span className="text-xs bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 px-2.5 py-1 rounded-full font-bold flex items-center gap-1">
-                <i className="fa-solid fa-lock text-[10px]"></i> SKOR TERKUNCI
+                <i className="fa-solid fa-lock text-[10px]"></i> DATA TERKUNCI
               </span>
             ) : (
               <span className="text-xs bg-indigo-200 dark:bg-indigo-900/70 text-indigo-800 dark:text-indigo-300 px-2.5 py-1 rounded-full font-bold flex items-center gap-1.5">
@@ -221,8 +218,7 @@ export default function SpectatorView({
                     <th className="py-3 px-4 text-center w-20">Peringkat</th>
                     <th className="py-3 px-3">ID Peserta</th>
                     <th className="py-3 px-4">Nama Peserta / Tim</th>
-                    <th className="py-3 px-4 text-center">Poin Detail (Sesi &amp; Waktu)</th>
-                    <th className="py-3 px-4 text-center">Total Skor</th>
+                    <th className="py-3 px-4 text-center">Waktu (Kecepatan)</th>
                     <th className="py-3 px-4 text-center">Status</th>
                   </tr>
                 </thead>
@@ -251,25 +247,12 @@ export default function SpectatorView({
                           </div>
                         </td>
                         <td className="py-3.5 px-4 text-center">
-                          <div className="inline-flex flex-wrap items-center justify-center gap-1.5 text-xs">
-                            <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded font-medium">
-                              R1: <b>{row.round1Score ?? 0}</b>
-                            </span>
-                            <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded font-medium">
-                              R2: <b>{row.round2Score ?? 0}</b>
-                            </span>
-                            <span
-                              className="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded font-digital text-xs border border-indigo-100 dark:border-indigo-800"
-                              title="Waktu Penyelesaian (Tie-Breaker)"
-                            >
-                              <i className="fa-regular fa-clock mr-1"></i>
-                              {row.timeStr}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
-                          <span className="text-lg font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-3 py-1 rounded-lg border border-indigo-100 dark:border-indigo-800">
-                            {row.totalScore}
+                          <span
+                            className="bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 px-3 py-1 rounded-lg font-digital text-base border border-indigo-100 dark:border-indigo-800"
+                            title="Waktu Penyelesaian"
+                          >
+                            <i className="fa-regular fa-clock mr-1.5"></i>
+                            {row.timeStr}
                           </span>
                         </td>
                         <td className="py-3.5 px-4 text-center">
@@ -305,22 +288,10 @@ export default function SpectatorView({
                             {row.team} {style.medal}
                           </span>
                         </div>
-                        <span className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                          Skor Sesi: R1 ({row.round1Score ?? 0}) + R2 ({row.round2Score ?? 0}) •{' '}
-                          Waktu: <span className="font-digital">{row.timeStr}</span>
-                        </span>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <span className="block text-[10px] uppercase text-slate-400 font-bold">
-                          Total Skor
-                        </span>
-                        <span className="font-extrabold text-2xl text-indigo-700 dark:text-indigo-300">
-                          {row.totalScore}
-                        </span>
-                      </div>
                       <div className="text-right">
                         <span className="block text-[10px] uppercase text-slate-400 font-bold">
                           Waktu
@@ -343,25 +314,9 @@ export default function SpectatorView({
           <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
             <i className="fa-solid fa-circle-info text-indigo-500 dark:text-indigo-400"></i>
             <span>
-              Total Peserta: <b>{rankedData.length} Tim</b> • Ambang Skor Lolos:{' '}
-              <b>{passingScore} Poin</b>
+              Total Peserta: <b>{rankedData.length} Tim</b> • Peringkat berdasarkan waktu tercepat
             </span>
           </div>
-          <button
-            onClick={onDownloadExcel}
-            disabled={isDownloading}
-            className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow-md flex items-center gap-2 transition-transform hover:-translate-y-0.5"
-          >
-            {isDownloading ? (
-              <>
-                <i className="fa-solid fa-spinner fa-spin"></i> Memproses Excel...
-              </>
-            ) : (
-              <>
-                <i className="fa-solid fa-file-excel"></i> Unduh Hasil (Excel)
-              </>
-            )}
-          </button>
         </div>
       </div>
     </div>

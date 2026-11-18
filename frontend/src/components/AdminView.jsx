@@ -6,7 +6,6 @@ export default function AdminView({
   activeTab,
   participants,
   matchStatus,
-  passingScore,
   onChangeMatchStatus,
   onAddParticipant,
   onUpdateParticipant,
@@ -14,7 +13,6 @@ export default function AdminView({
   onDownloadExcel,
   isDownloading,
   onShowToast,
-  onPlayBeep,
 }) {
   const [showFinishModal, setShowFinishModal] = useState(false);
   const [showManualModal, setShowManualModal] = useState(false);
@@ -23,13 +21,11 @@ export default function AdminView({
   // State form manual / edit
   const [formId, setFormId] = useState('');
   const [formTeam, setFormTeam] = useState('');
-  const [formR1, setFormR1] = useState(80);
-  const [formR2, setFormR2] = useState(15);
   const [formTimeStr, setFormTimeStr] = useState('01:10:000');
   const [formStatus, setFormStatus] = useState('Otomatis');
 
   const isFrozen = matchStatus === 'selesai';
-  const rankedData = calculateLeaderboard(participants, passingScore);
+  const rankedData = calculateLeaderboard(participants);
   const boardTitle = activeTab === 'lb1' ? 'Leaderboard 1' : 'Leaderboard 2';
 
   const nextIdA = `TIM-${String(participants.length + 1).padStart(3, '0')}`;
@@ -43,8 +39,6 @@ export default function AdminView({
     setEditingItem(null);
     setFormId(nextIdA);
     setFormTeam('');
-    setFormR1(80);
-    setFormR2(15);
     setFormTimeStr('01:10:000');
     setFormStatus('Otomatis');
     setShowManualModal(true);
@@ -58,8 +52,6 @@ export default function AdminView({
     setEditingItem(row);
     setFormId(row.participantId || '');
     setFormTeam(row.team || '');
-    setFormR1(row.round1Score ?? 0);
-    setFormR2(row.round2Score ?? 0);
     setFormTimeStr(row.timeStr || formatTimeMs(row.timeMs));
     setFormStatus(row.customStatus || 'Otomatis');
     setShowManualModal(true);
@@ -71,18 +63,12 @@ export default function AdminView({
       onShowToast('⚠️ Nama Peserta/Tim wajib diisi!');
       return;
     }
-    const r1 = Number(formR1) || 0;
-    const r2 = Number(formR2) || 0;
-    const totalScore = r1 + r2;
     const timeMs = parseTimeStrToMs(formTimeStr) || 60000;
 
     if (editingItem) {
       onUpdateParticipant(editingItem.id, {
         participantId: formId.trim() || editingItem.participantId,
         team: formTeam.trim(),
-        round1Score: r1,
-        round2Score: r2,
-        totalScore,
         timeMs,
         timeStr: formatTimeMs(timeMs),
         customStatus: formStatus,
@@ -91,9 +77,6 @@ export default function AdminView({
       onAddParticipant({
         participantId: formId.trim() || nextIdA,
         team: formTeam.trim(),
-        round1Score: r1,
-        round2Score: r2,
-        totalScore,
         timeMs,
         timeStr: formatTimeMs(timeMs),
         customStatus: formStatus,
@@ -248,7 +231,7 @@ export default function AdminView({
         <div className="flex items-center gap-2">
           <i className="fa-solid fa-stopwatch text-indigo-600 dark:text-indigo-400 text-xl"></i>
           <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-            Panel Kendali Waktu &amp; Input Skor
+            Panel Kendali Waktu
           </h2>
         </div>
 
@@ -257,7 +240,7 @@ export default function AdminView({
           disabled={isFrozen}
           className="px-4 py-2 rounded-xl text-sm font-bold bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center gap-2 transition-colors"
         >
-          <i className="fa-solid fa-user-plus"></i> + Input Skor Manual (Tanpa Timer)
+          <i className="fa-solid fa-user-plus"></i> + Input Waktu Manual (Tanpa Timer)
         </button>
       </div>
 
@@ -271,7 +254,6 @@ export default function AdminView({
           nextSuggestedId={nextIdA}
           onSaveParticipant={onAddParticipant}
           onShowToast={onShowToast}
-          onPlayBeep={onPlayBeep}
         />
 
         <DualTimerLane
@@ -282,7 +264,6 @@ export default function AdminView({
           nextSuggestedId={nextIdB}
           onSaveParticipant={onAddParticipant}
           onShowToast={onShowToast}
-          onPlayBeep={onPlayBeep}
         />
       </div>
 
@@ -296,7 +277,7 @@ export default function AdminView({
             <p className="text-slate-500 dark:text-slate-400 text-sm">
               Target Papan:{' '}
               <span className="font-semibold text-indigo-600 dark:text-indigo-400">{boardTitle}</span> • Diurutkan
-              dari Total Skor tertinggi (Tie-breaker: Waktu tercepat)
+              dari waktu tercepat (peringkat 1 = tercepat)
             </p>
           </div>
           <button
@@ -321,9 +302,7 @@ export default function AdminView({
                   <th className="py-3 px-3 text-center">Peringkat</th>
                   <th className="py-3 px-3">ID Peserta</th>
                   <th className="py-3 px-3">Nama Peserta / Tim</th>
-                  <th className="py-3 px-3 text-center">Skor Ronde/Sesi</th>
                   <th className="py-3 px-3 text-center">Waktu</th>
-                  <th className="py-3 px-3 text-center">Total Skor</th>
                   <th className="py-3 px-3 text-center">Status</th>
                   <th className="py-3 px-3 text-right">Aksi</th>
                 </tr>
@@ -348,16 +327,8 @@ export default function AdminView({
                         {row.participantId}
                       </td>
                       <td className="py-3 px-3 font-semibold text-slate-800 dark:text-slate-100">{row.team}</td>
-                      <td className="py-3 px-3 text-center text-xs text-slate-600 dark:text-slate-300">
-                        R1: <b>{row.round1Score ?? 0}</b> | R2: <b>{row.round2Score ?? 0}</b>
-                      </td>
                       <td className="py-3 px-3 text-center font-digital text-sm text-indigo-700 dark:text-indigo-400">
                         {row.timeStr}
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        <span className="font-extrabold text-base text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-1 rounded-md">
-                          {row.totalScore}
-                        </span>
                       </td>
                       <td className="py-3 px-3 text-center">{getStatusPill(row.status)}</td>
                       <td className="py-3 px-3 text-right">
@@ -366,7 +337,7 @@ export default function AdminView({
                             onClick={() => openEditRow(row)}
                             disabled={isFrozen}
                             className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:pointer-events-none"
-                            title="Edit Skor / Peserta"
+                            title="Edit Waktu / Peserta"
                           >
                             <i className="fa-solid fa-pen-to-square"></i>
                           </button>
@@ -397,14 +368,14 @@ export default function AdminView({
               <i className="fa-solid fa-flag-checkered text-xl"></i>
             </div>
             <h3 className="text-lg font-bold">
-              Selesaikan Pertandingan &amp; Kunci Skor?
+              Selesaikan Pertandingan &amp; Kunci Data?
             </h3>
             <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">
               Dengan mengonfirmasi, status pertandingan akan diubah menjadi <b>Selesai</b>:
             </p>
             <ul className="text-xs text-slate-600 dark:text-slate-400 mt-3 space-y-1.5 list-disc list-inside bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200 dark:border-slate-700">
               <li>Sistem mengunci seluruh input penambahan/perubahan skor (<b>Freeze Data</b>).</li>
-              <li>Peringkat peserta diurutkan otomatis dari Total Skor tertinggi ke terkecil.</li>
+              <li>Peringkat peserta diurutkan otomatis dari waktu tercepat ke terlama.</li>
               <li>Laporan akhir siap diunduh dalam format Excel (<code>.xlsx</code>).</li>
             </ul>
             <div className="flex justify-end gap-2.5 mt-6">
@@ -431,7 +402,7 @@ export default function AdminView({
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-100 dark:border-slate-800 max-w-md w-full p-6 animate-fade-in text-slate-800 dark:text-slate-100">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold">
-                {editingItem ? 'Edit Data & Skor Peserta' : 'Input Skor Peserta Baru'}
+                {editingItem ? 'Edit Data & Waktu Peserta' : 'Input Waktu Peserta Baru'}
               </h3>
               <button
                 onClick={() => setShowManualModal(false)}
@@ -470,39 +441,6 @@ export default function AdminView({
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
-                    Skor Sesi 1
-                  </label>
-                  <input
-                    type="number"
-                    value={formR1}
-                    onChange={(e) => setFormR1(e.target.value)}
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-800 dark:text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
-                    Skor Sesi 2
-                  </label>
-                  <input
-                    type="number"
-                    value={formR2}
-                    onChange={(e) => setFormR2(e.target.value)}
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-800 dark:text-slate-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-indigo-600 dark:text-indigo-400 mb-1">
-                    Total Skor
-                  </label>
-                  <div className="w-full px-3 py-2 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 rounded-lg text-sm font-extrabold text-indigo-700 dark:text-indigo-300 text-center">
-                    {(Number(formR1) || 0) + (Number(formR2) || 0)}
-                  </div>
-                </div>
-              </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
@@ -525,7 +463,7 @@ export default function AdminView({
                     onChange={(e) => setFormStatus(e.target.value)}
                     className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-100"
                   >
-                    <option value="Otomatis">Otomatis (Sesuai Skor)</option>
+                    <option value="Otomatis">Otomatis (Sesuai Kecepatan)</option>
                     <option value="Pemenang">Pemenang</option>
                     <option value="Lolos">Lolos</option>
                     <option value="Gugur">Gugur</option>

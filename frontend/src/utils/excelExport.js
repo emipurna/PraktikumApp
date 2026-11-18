@@ -24,9 +24,8 @@ export function buildExcelFilename(eventName = 'Kompetisi_UAS', eventDate = '') 
  *   1. Peringkat
  *   2. ID Peserta
  *   3. Nama Peserta/Tim
- *   4. Skor Ronde/Sesi
- *   5. Total Skor Akhir
- *   6. Status (Lolos/Gugur/Pemenang)
+ *   4. Waktu Penyelesaian (kecepatan)
+ *   5. Status (Lolos/Gugur/Pemenang)
  */
 export async function exportLeaderboardToExcel({
   boardId,
@@ -34,9 +33,8 @@ export async function exportLeaderboardToExcel({
   eventName,
   eventDate,
   participants,
-  passingScore = 60,
 }) {
-  const rankedData = calculateLeaderboard(participants, passingScore);
+  const rankedData = calculateLeaderboard(participants);
   const fileName = buildExcelFilename(`${eventName}_${boardTitle}`, eventDate);
 
   // 1. Coba panggil Backend Golang jika sudah berjalan
@@ -77,8 +75,7 @@ export async function exportLeaderboardToExcel({
     { header: 'Peringkat', key: 'rank', width: 14 },
     { header: 'ID Peserta', key: 'participantId', width: 18 },
     { header: 'Nama Peserta/Tim', key: 'team', width: 28 },
-    { header: 'Skor Ronde/Sesi', key: 'roundDetail', width: 34 },
-    { header: 'Total Skor Akhir', key: 'totalScore', width: 20 },
+    { header: 'Waktu (MM:SS:mmm)', key: 'timeStr', width: 22 },
     { header: 'Status', key: 'status', width: 18 },
   ];
 
@@ -111,16 +108,11 @@ export async function exportLeaderboardToExcel({
 
   // Isi Baris Data Peserta
   rankedData.forEach((row) => {
-    const r1 = Number(row.round1Score) || 0;
-    const r2 = Number(row.round2Score) || 0;
-    const roundSummary = `R1: ${r1} | R2: ${r2} (Waktu: ${row.timeStr || '00:00:000'})`;
-
     const dataRow = worksheet.addRow({
       rank: row.rank,
       participantId: row.participantId || `PESERTA-${String(row.rank).padStart(3, '0')}`,
       team: row.team,
-      roundDetail: roundSummary,
-      totalScore: row.totalScore,
+      timeStr: row.timeStr || '00:00:000',
       status: row.status,
     });
 
@@ -130,11 +122,11 @@ export async function exportLeaderboardToExcel({
       cell.font = {
         name: 'Calibri',
         size: 11,
-        bold: row.rank <= 3 || colNumber === 1 || colNumber === 5,
+        bold: row.rank <= 3 || colNumber === 1 || colNumber === 4,
       };
       cell.alignment = {
         vertical: 'middle',
-        horizontal: colNumber === 3 || colNumber === 4 ? 'left' : 'center',
+        horizontal: colNumber === 3 ? 'left' : 'center',
       };
       cell.border = {
         top: { style: 'thin', color: { argb: 'FFE2E8F0' } },

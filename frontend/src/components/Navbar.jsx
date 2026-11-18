@@ -7,8 +7,6 @@ export default function Navbar({
   onToggleAuthView,
   darkMode,
   onToggleDarkMode,
-  soundEnabled,
-  onToggleSound,
   eventConfig,
   matchStatus,
   onOpenSettings,
@@ -95,18 +93,6 @@ export default function Navbar({
 
       {/* Right: Audio, Swipe Dark/Light Toggle, Login Button */}
       <div className="flex items-center gap-5">
-        <button
-          onClick={onToggleSound}
-          title={soundEnabled ? 'Suara Aktif' : 'Suara Nonaktif'}
-          className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
-        >
-          <i
-            className={`fa-solid ${
-              soundEnabled ? 'fa-volume-high text-indigo-600 dark:text-indigo-400' : 'fa-volume-xmark'
-            } text-lg`}
-          ></i>
-        </button>
-
         {/* Swipe Button: Dark Mode / Light Mode Toggle */}
         <div
           className="flex items-center gap-2 cursor-pointer select-none"
