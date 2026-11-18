@@ -1,9 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Navbar from './components/Navbar';
 import SpectatorView from './components/SpectatorView';
 import LoginView from './components/LoginView';
 import AdminView from './components/AdminView';
 import { exportLeaderboardToExcel } from './utils/excelExport';
+import {
+  fetchLeaderboard,
+  updateMatchStatus,
+  updateMatchConfig,
+  createParticipant,
+  updateParticipant,
+  deleteParticipant,
+} from './utils/api';
 
 const INITIAL_DB = {
   lb1: [
@@ -31,14 +39,6 @@ const INITIAL_DB = {
       timeStr: '01:18:500',
       customStatus: 'Otomatis',
     },
-    {
-      id: 'p-4',
-      participantId: 'TIM-004',
-      team: 'Kelompok Delta',
-      timeMs: 95000,
-      timeStr: '01:35:000',
-      customStatus: 'Otomatis',
-    },
   ],
   lb2: [
     {
@@ -49,19 +49,11 @@ const INITIAL_DB = {
       timeStr: '01:08:200',
       customStatus: 'Otomatis',
     },
-    {
-      id: 'p-202',
-      participantId: 'TIM-102',
-      team: 'Tim CyberMecha',
-      timeMs: 74900,
-      timeStr: '01:14:900',
-      customStatus: 'Otomatis',
-    },
   ],
 };
 
 const INITIAL_STATUS = {
-  lb1: 'berlangsung', // 'belum_mulai' | 'berlangsung' | 'jeda' | 'selesai'
+  lb1: 'berlangsung',
   lb2: 'belum_mulai',
 };
 
@@ -70,6 +62,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('lb1');
   const [isDownloading, setIsDownloading] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [backendConnected, setBackendConnected] = useState(false);
 
   // Dark Mode State
   const [darkMode, setDarkMode] = useState(() => {
@@ -84,7 +77,6 @@ export default function App() {
     }
   });
 
-  // Sinkronisasi kelas 'dark' pada document.documentElement
   useEffect(() => {
     try {
       if (darkMode) {
@@ -124,18 +116,65 @@ export default function App() {
         ? JSON.parse(saved)
         : {
             eventName: 'Kompetisi_UAS_Robotika',
-            eventDate: '2026-11-13',
+            eventDate: '2026-11-18',
           };
     } catch {
       return {
         eventName: 'Kompetisi_UAS_Robotika',
-        eventDate: '2026-11-13',
+        eventDate: '2026-11-18',
       };
     }
   });
 
   const [toastMsg, setToastMsg] = useState(null);
   const toastTimerRef = useRef(null);
+
+  const showToast = useCallback((msg) => {
+    setToastMsg(msg);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => {
+      setToastMsg(null);
+    }, 3200);
+  }, []);
+
+  // Sinkronisasi data dari Backend Golang + PostgreSQL
+  const syncBoardFromBackend = useCallback(async (boardId) => {
+    try {
+      const data = await fetchLeaderboard(boardId);
+      setBackendConnected(true);
+      setDatabase((prev) => ({
+        ...prev,
+        [boardId]: data.participants || [],
+      }));
+      if (data.matchStatus) {
+        setMatchStatusByBoard((prev) => ({
+          ...prev,
+          [boardId]: data.matchStatus,
+        }));
+      }
+      if (data.eventName || data.eventDate) {
+        setEventConfig((prev) => ({
+          eventName: data.eventName || prev.eventName,
+          eventDate: data.eventDate || prev.eventDate,
+        }));
+      }
+    } catch {
+      setBackendConnected(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    syncBoardFromBackend(activeTab);
+  }, [activeTab, syncBoardFromBackend]);
+
+  // Live polling setiap 3 detik pada mode Penonton agar leaderboard selalu real-time
+  useEffect(() => {
+    if (view !== 'user') return undefined;
+    const interval = setInterval(() => {
+      syncBoardFromBackend(activeTab);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [view, activeTab, syncBoardFromBackend]);
 
   useEffect(() => {
     try {
@@ -160,14 +199,6 @@ export default function App() {
       // ignore storage errors
     }
   }, [eventConfig]);
-
-  const showToast = (msg) => {
-    setToastMsg(msg);
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = setTimeout(() => {
-      setToastMsg(null);
-    }, 3200);
-  };
 
   const currentParticipants = database[activeTab] || [];
   const currentMatchStatus = matchStatusByBoard[activeTab] || 'belum_mulai';
@@ -197,71 +228,122 @@ export default function App() {
     showToast(`✅ Login Berhasil! Selamat datang ${username}.`);
   };
 
-  const handleChangeMatchStatus = (newStatus) => {
-    setMatchStatusByBoard((prev) => ({
-      ...prev,
-      [activeTab]: newStatus,
-    }));
+  const handleChangeMatchStatus = async (newStatus) => {
+    try {
+      if (backendConnected) {
+        await updateMatchStatus(activeTab, newStatus);
+        await syncBoardFromBackend(activeTab);
+      } else {
+        setMatchStatusByBoard((prev) => ({
+          ...prev,
+          [activeTab]: newStatus,
+        }));
+      }
 
-    if (newStatus === 'berlangsung') {
-      showToast('🚀 Pertandingan dimulai! Timer & input waktu aktif.');
-    } else if (newStatus === 'jeda') {
-      showToast('⏸️ Pertandingan dijeda sementara.');
-    } else if (newStatus === 'selesai') {
-      showToast(
-        '🏁 Pertandingan Selesai! Data telah dikunci (Freeze Data) & peringkat akhir diurutkan berdasarkan kecepatan.'
-      );
+      if (newStatus === 'berlangsung') {
+        showToast('🚀 Pertandingan dimulai! Timer & input waktu aktif.');
+      } else if (newStatus === 'jeda') {
+        showToast('⏸️ Pertandingan dijeda sementara.');
+      } else if (newStatus === 'selesai') {
+        showToast(
+          '🏁 Pertandingan Selesai! Data telah dikunci (Freeze Data) & peringkat akhir diurutkan berdasarkan kecepatan.'
+        );
+      }
+    } catch (err) {
+      showToast(`❌ ${err.message || 'Gagal mengubah status pertandingan'}`);
     }
   };
 
-  const handleAddParticipant = (newParticipant) => {
+  const handleAddParticipant = async (newParticipant) => {
     if (currentMatchStatus === 'selesai') {
       showToast('🔒 Pertandingan telah Selesai. Penambahan data dinonaktifkan!');
       return;
     }
 
-    const entry = {
-      id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      ...newParticipant,
-    };
+    try {
+      if (backendConnected) {
+        await createParticipant({
+          boardId: activeTab,
+          ...newParticipant,
+        });
+        await syncBoardFromBackend(activeTab);
+      } else {
+        const entry = {
+          id: `p-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          ...newParticipant,
+        };
+        setDatabase((prev) => ({
+          ...prev,
+          [activeTab]: [...(prev[activeTab] || []), entry],
+        }));
+      }
 
-    setDatabase((prev) => ({
-      ...prev,
-      [activeTab]: [...(prev[activeTab] || []), entry],
-    }));
-
-    const boardLabel = activeTab === 'lb1' ? 'Leaderboard 1' : 'Leaderboard 2';
-    showToast(`✅ Waktu ${entry.team} berhasil disimpan ke ${boardLabel}!`);
+      const boardLabel = activeTab === 'lb1' ? 'Leaderboard 1' : 'Leaderboard 2';
+      showToast(`✅ Waktu ${newParticipant.team} berhasil disimpan ke ${boardLabel}!`);
+    } catch (err) {
+      showToast(`❌ ${err.message || 'Gagal menyimpan data peserta'}`);
+    }
   };
 
-  const handleUpdateParticipant = (id, updatedFields) => {
+  const handleUpdateParticipant = async (id, updatedFields) => {
     if (currentMatchStatus === 'selesai') {
       showToast('🔒 Pertandingan telah Selesai. Data tidak dapat diubah!');
       return;
     }
 
-    setDatabase((prev) => ({
-      ...prev,
-      [activeTab]: (prev[activeTab] || []).map((item) =>
-        item.id === id ? { ...item, ...updatedFields } : item
-      ),
-    }));
+    try {
+      if (backendConnected) {
+        await updateParticipant(id, updatedFields);
+        await syncBoardFromBackend(activeTab);
+      } else {
+        setDatabase((prev) => ({
+          ...prev,
+          [activeTab]: (prev[activeTab] || []).map((item) =>
+            item.id === id ? { ...item, ...updatedFields } : item
+          ),
+        }));
+      }
 
-    showToast(`✅ Data peserta ${updatedFields.team} berhasil diperbarui!`);
+      showToast(`✅ Data peserta ${updatedFields.team} berhasil diperbarui!`);
+    } catch (err) {
+      showToast(`❌ ${err.message || 'Gagal memperbarui data peserta'}`);
+    }
   };
 
-  const handleDeleteParticipant = (id) => {
+  const handleDeleteParticipant = async (id) => {
     if (currentMatchStatus === 'selesai') {
       showToast('🔒 Pertandingan telah Selesai. Data tidak dapat dihapus!');
       return;
     }
 
-    setDatabase((prev) => ({
-      ...prev,
-      [activeTab]: (prev[activeTab] || []).filter((item) => item.id !== id),
-    }));
+    try {
+      if (backendConnected) {
+        await deleteParticipant(id);
+        await syncBoardFromBackend(activeTab);
+      } else {
+        setDatabase((prev) => ({
+          ...prev,
+          [activeTab]: (prev[activeTab] || []).filter((item) => item.id !== id),
+        }));
+      }
 
-    showToast('🗑️ Data peserta dihapus dari papan peringkat.');
+      showToast('🗑️ Data peserta dihapus dari papan peringkat.');
+    } catch (err) {
+      showToast(`❌ ${err.message || 'Gagal menghapus data peserta'}`);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      if (backendConnected) {
+        await updateMatchConfig(activeTab, eventConfig.eventName, eventConfig.eventDate);
+        await syncBoardFromBackend(activeTab);
+      }
+      setShowSettingsModal(false);
+      showToast('✅ Pengaturan kompetisi disimpan.');
+    } catch (err) {
+      showToast(`❌ ${err.message || 'Gagal menyimpan pengaturan'}`);
+    }
   };
 
   const handleDownloadExcel = async () => {
@@ -283,7 +365,7 @@ export default function App() {
         participants: currentParticipants,
       });
 
-      showToast(`✅ File ${result.fileName} berhasil diunduh!`);
+      showToast(`✅ File ${result.fileName} berhasil diunduh (${result.source})!`);
     } catch (err) {
       console.error(err);
       showToast('❌ Gagal membuat file Excel.');
@@ -399,32 +481,20 @@ export default function App() {
                 <code className="text-indigo-600 dark:text-indigo-400 font-mono break-all">
                   Hasil_Pertandingan_{eventConfig.eventName || 'Event'}_
                   {activeTab === 'lb1' ? 'Leaderboard_1' : 'Leaderboard_2'}_
-                  {eventConfig.eventDate || '2026-11-13'}.xlsx
+                  {eventConfig.eventDate || '2026-11-18'}.xlsx
                 </code>
               </div>
 
               <div className="flex justify-between items-center pt-3 border-t border-slate-100 dark:border-slate-800">
+                <span className="text-[11px] font-medium text-slate-400">
+                  {backendConnected ? '🟢 Terhubung ke Backend Go' : '🟡 Mode Offline (LocalStorage)'}
+                </span>
                 <button
                   type="button"
-                  onClick={() => {
-                    setDatabase(INITIAL_DB);
-                    setMatchStatusByBoard(INITIAL_STATUS);
-                    showToast('🔄 Data contoh berhasil di-reset ke awal.');
-                    setShowSettingsModal(false);
-                  }}
-                  className="text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline"
-                >
-                  Reset Data Default
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowSettingsModal(false);
-                    showToast('✅ Pengaturan kompetisi disimpan.');
-                  }}
+                  onClick={handleSaveSettings}
                   className="px-5 py-2 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow"
                 >
-                  Selesai
+                  Simpan &amp; Tutup
                 </button>
               </div>
             </div>

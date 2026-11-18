@@ -1,18 +1,38 @@
 import React, { useState } from 'react';
+import { loginAdmin } from '../utils/api';
 
 export default function LoginView({ onLoginSuccess, onShowToast }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
       onShowToast('⚠️ Harap isi username dan password!');
       return;
     }
-    onLoginSuccess(username.trim());
-    setUsername('');
-    setPassword('');
+
+    setIsLoading(true);
+    try {
+      const res = await loginAdmin(username.trim(), password);
+      onLoginSuccess(res.username || username.trim());
+      setUsername('');
+      setPassword('');
+    } catch (err) {
+      if (err.status === 401) {
+        onShowToast('❌ Username atau password salah!');
+      } else if (username.trim() === 'admin' && password === 'admin123') {
+        // Fallback offline jika backend belum dijalankan
+        onLoginSuccess(username.trim());
+        setUsername('');
+        setPassword('');
+      } else {
+        onShowToast(`❌ ${err.message || 'Gagal login ke server'}`);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -24,7 +44,7 @@ export default function LoginView({ onLoginSuccess, onShowToast }) {
           </div>
           <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Admin Portal</h2>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-            Masuk untuk mengelola status pertandingan, timer &amp; skor
+            Masuk untuk mengelola status pertandingan &amp; waktu
           </p>
         </div>
 
@@ -51,9 +71,10 @@ export default function LoginView({ onLoginSuccess, onShowToast }) {
           </div>
           <button
             type="submit"
-            className="w-full mt-2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5"
+            disabled={isLoading}
+            className="w-full mt-2 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5"
           >
-            Masuk Sistem
+            {isLoading ? 'Memverifikasi...' : 'Masuk Sistem'}
           </button>
         </form>
 
