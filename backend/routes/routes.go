@@ -2,6 +2,8 @@ package routes
 
 import (
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"leaderboard-backend/config"
@@ -14,14 +16,33 @@ import (
 func SetupRouter() *gin.Engine {
 	r := gin.Default()
 
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173", "http://127.0.0.1:5173"},
+	allowedOrigins := []string{"http://localhost:5173", "http://127.0.0.1:5173"}
+	if envOrigins := os.Getenv("FRONTEND_URL"); envOrigins != "" {
+		for _, origin := range strings.Split(envOrigins, ",") {
+			trimmed := strings.TrimSpace(strings.TrimRight(origin, "/"))
+			if trimmed != "" {
+				allowedOrigins = append(allowedOrigins, trimmed)
+			}
+		}
+	}
+
+	corsConfig := cors.Config{
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		ExposeHeaders:    []string{"Content-Disposition"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
-	}))
+	}
+
+	if len(allowedOrigins) == 2 && os.Getenv("GIN_MODE") == "release" {
+		// Jika FRONTEND_URL belum diset di production, izinkan semua origin
+		corsConfig.AllowAllOrigins = true
+		corsConfig.AllowCredentials = false
+	} else {
+		corsConfig.AllowOrigins = allowedOrigins
+	}
+
+	r.Use(cors.New(corsConfig))
 
 	api := r.Group("/api")
 	{

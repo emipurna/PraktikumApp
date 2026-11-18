@@ -13,20 +13,22 @@ import (
 )
 
 type CreateParticipantRequest struct {
-	BoardID       string `json:"boardId" binding:"required"`
-	ParticipantID string `json:"participantId"`
-	Team          string `json:"team" binding:"required"`
-	TimeMs        int64  `json:"timeMs" binding:"required"`
-	TimeStr       string `json:"timeStr"`
-	CustomStatus  string `json:"customStatus"`
+	BoardID           string `json:"boardId" binding:"required"`
+	ParticipantID     string `json:"participantId"`
+	Team              string `json:"team" binding:"required"`
+	CompletedMissions int    `json:"completedMissions"`
+	TimeMs            int64  `json:"timeMs" binding:"required"`
+	TimeStr           string `json:"timeStr"`
+	CustomStatus      string `json:"customStatus"`
 }
 
 type UpdateParticipantRequest struct {
-	ParticipantID string `json:"participantId"`
-	Team          string `json:"team" binding:"required"`
-	TimeMs        int64  `json:"timeMs" binding:"required"`
-	TimeStr       string `json:"timeStr"`
-	CustomStatus  string `json:"customStatus"`
+	ParticipantID     string `json:"participantId"`
+	Team              string `json:"team" binding:"required"`
+	CompletedMissions int    `json:"completedMissions"`
+	TimeMs            int64  `json:"timeMs" binding:"required"`
+	TimeStr           string `json:"timeStr"`
+	CustomStatus      string `json:"customStatus"`
 }
 
 func isBoardFrozen(boardID string) bool {
@@ -91,14 +93,20 @@ func CreateParticipant(c *gin.Context) {
 		participantID = fmt.Sprintf("TIM-%03d", count+1)
 	}
 
+	missions := req.CompletedMissions
+	if missions < 1 || missions > 5 {
+		missions = 1
+	}
+
 	participant := models.Participant{
-		ID:            fmt.Sprintf("p-%d", time.Now().UnixNano()),
-		BoardID:       req.BoardID,
-		ParticipantID: participantID,
-		Team:          req.Team,
-		TimeMs:        req.TimeMs,
-		TimeStr:       timeStr,
-		CustomStatus:  customStatus,
+		ID:                fmt.Sprintf("p-%d", time.Now().UnixNano()),
+		BoardID:           req.BoardID,
+		ParticipantID:     participantID,
+		Team:              req.Team,
+		CompletedMissions: missions,
+		TimeMs:            req.TimeMs,
+		TimeStr:           timeStr,
+		CustomStatus:      customStatus,
 	}
 
 	if err := config.DB.Create(&participant).Error; err != nil {
@@ -138,6 +146,9 @@ func UpdateParticipant(c *gin.Context) {
 		participant.ParticipantID = req.ParticipantID
 	}
 	participant.Team = req.Team
+	if req.CompletedMissions >= 1 && req.CompletedMissions <= 5 {
+		participant.CompletedMissions = req.CompletedMissions
+	}
 	participant.TimeMs = req.TimeMs
 	if req.TimeStr != "" {
 		participant.TimeStr = req.TimeStr

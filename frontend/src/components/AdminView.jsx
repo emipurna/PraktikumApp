@@ -21,6 +21,7 @@ export default function AdminView({
   // State form manual / edit
   const [formId, setFormId] = useState('');
   const [formTeam, setFormTeam] = useState('');
+  const [formMissions, setFormMissions] = useState(1);
   const [formTimeStr, setFormTimeStr] = useState('01:10:000');
   const [formStatus, setFormStatus] = useState('Otomatis');
 
@@ -39,6 +40,7 @@ export default function AdminView({
     setEditingItem(null);
     setFormId(nextIdA);
     setFormTeam('');
+    setFormMissions(1);
     setFormTimeStr('01:10:000');
     setFormStatus('Otomatis');
     setShowManualModal(true);
@@ -52,6 +54,7 @@ export default function AdminView({
     setEditingItem(row);
     setFormId(row.participantId || '');
     setFormTeam(row.team || '');
+    setFormMissions(row.completedMissions ?? 1);
     setFormTimeStr(row.timeStr || formatTimeMs(row.timeMs));
     setFormStatus(row.customStatus || 'Otomatis');
     setShowManualModal(true);
@@ -64,11 +67,13 @@ export default function AdminView({
       return;
     }
     const timeMs = parseTimeStrToMs(formTimeStr) || 60000;
+    const completedMissions = Number(formMissions) || 1;
 
     if (editingItem) {
       onUpdateParticipant(editingItem.id, {
         participantId: formId.trim() || editingItem.participantId,
         team: formTeam.trim(),
+        completedMissions,
         timeMs,
         timeStr: formatTimeMs(timeMs),
         customStatus: formStatus,
@@ -77,6 +82,7 @@ export default function AdminView({
       onAddParticipant({
         participantId: formId.trim() || nextIdA,
         team: formTeam.trim(),
+        completedMissions,
         timeMs,
         timeStr: formatTimeMs(timeMs),
         customStatus: formStatus,
@@ -104,6 +110,13 @@ export default function AdminView({
       return (
         <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
           ✓ Lolos
+        </span>
+      );
+    }
+    if (status === 'Belum Full Misi') {
+      return (
+        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+          ⏳ Belum Full Misi
         </span>
       );
     }
@@ -277,7 +290,7 @@ export default function AdminView({
             <p className="text-slate-500 dark:text-slate-400 text-sm">
               Target Papan:{' '}
               <span className="font-semibold text-indigo-600 dark:text-indigo-400">{boardTitle}</span> • Diurutkan
-              dari waktu tercepat (peringkat 1 = tercepat)
+              berdasarkan Full 5 Misi &amp; Waktu Tercepat
             </p>
           </div>
           <button
@@ -302,6 +315,7 @@ export default function AdminView({
                   <th className="py-3 px-3 text-center">Peringkat</th>
                   <th className="py-3 px-3">ID Peserta</th>
                   <th className="py-3 px-3">Nama Peserta / Tim</th>
+                  <th className="py-3 px-3 text-center">Jumlah Misi yang Diselesaikan</th>
                   <th className="py-3 px-3 text-center">Waktu</th>
                   <th className="py-3 px-3 text-center">Status</th>
                   <th className="py-3 px-3 text-right">Aksi</th>
@@ -327,6 +341,11 @@ export default function AdminView({
                         {row.participantId}
                       </td>
                       <td className="py-3 px-3 font-semibold text-slate-800 dark:text-slate-100">{row.team}</td>
+                      <td className="py-3 px-3 text-center">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
+                          {row.completedMissions ?? 1} Misi
+                        </span>
+                      </td>
                       <td className="py-3 px-3 text-center font-digital text-sm text-indigo-700 dark:text-indigo-400">
                         {row.timeStr}
                       </td>
@@ -441,6 +460,23 @@ export default function AdminView({
                 </div>
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
+                  Jumlah Misi yang Diselesaikan
+                </label>
+                <select
+                  value={formMissions}
+                  onChange={(e) => setFormMissions(Number(e.target.value))}
+                  className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-800 dark:text-slate-100"
+                >
+                  {[1, 2, 3, 4, 5].map((num) => (
+                    <option key={num} value={num}>
+                      {num}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
@@ -463,9 +499,10 @@ export default function AdminView({
                     onChange={(e) => setFormStatus(e.target.value)}
                     className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-800 dark:text-slate-100"
                   >
-                    <option value="Otomatis">Otomatis (Sesuai Kecepatan)</option>
+                    <option value="Otomatis">Otomatis (Sesuai Kecepatan &amp; Misi)</option>
                     <option value="Pemenang">Pemenang</option>
                     <option value="Lolos">Lolos</option>
+                    <option value="Belum Full Misi">Belum Full Misi</option>
                     <option value="Gugur">Gugur</option>
                   </select>
                 </div>

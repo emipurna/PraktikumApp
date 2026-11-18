@@ -17,6 +17,7 @@ export default function DualTimerLane({
 
   const [participantId, setParticipantId] = useState('');
   const [teamName, setTeamName] = useState('');
+  const [completedMissions, setCompletedMissions] = useState(1);
 
 
   const intervalRef = useRef(null);
@@ -73,6 +74,7 @@ export default function DualTimerLane({
   const handleClearInputs = () => {
     setParticipantId('');
     setTeamName('');
+    setCompletedMissions(1);
   };
 
   const handleSave = () => {
@@ -111,6 +113,7 @@ export default function DualTimerLane({
     onSaveParticipant({
       participantId: finalId,
       team: trimmedTeam,
+      completedMissions: Number(completedMissions) || 1,
       timeMs: elapsedMs,
       timeStr: formatTimeMs(elapsedMs),
       customStatus: 'Otomatis',
@@ -242,6 +245,25 @@ export default function DualTimerLane({
               className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 dark:disabled:bg-slate-800/40"
             />
           </div>
+        </div>
+
+        {/* Dropdown Jumlah Misi yang Diselesaikan */}
+        <div>
+          <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
+            Jumlah Misi yang Diselesaikan
+          </label>
+          <select
+            disabled={isFrozen}
+            value={completedMissions}
+            onChange={(e) => setCompletedMissions(Number(e.target.value))}
+            className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 dark:disabled:bg-slate-800/40"
+          >
+            {[1, 2, 3, 4, 5].map((num) => (
+              <option key={num} value={num}>
+                {num}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Tombol Aksi Simpan & Reset Input */}

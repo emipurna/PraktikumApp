@@ -44,7 +44,8 @@ export async function exportLeaderboardToExcel({
       event: `${eventName}_${boardTitle}`,
       date: eventDate || new Date().toISOString().slice(0, 10),
     });
-    const response = await fetch(`/api/matches/export?${query.toString()}`, {
+    const baseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+    const response = await fetch(`${baseUrl}/api/matches/export?${query.toString()}`, {
       method: 'GET',
       headers: { Accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
     });
@@ -75,6 +76,7 @@ export async function exportLeaderboardToExcel({
     { header: 'Peringkat', key: 'rank', width: 14 },
     { header: 'ID Peserta', key: 'participantId', width: 18 },
     { header: 'Nama Peserta/Tim', key: 'team', width: 28 },
+    { header: 'Jumlah Misi yang Diselesaikan', key: 'completedMissions', width: 30 },
     { header: 'Waktu (MM:SS:mmm)', key: 'timeStr', width: 22 },
     { header: 'Status', key: 'status', width: 18 },
   ];
@@ -112,6 +114,7 @@ export async function exportLeaderboardToExcel({
       rank: row.rank,
       participantId: row.participantId || `PESERTA-${String(row.rank).padStart(3, '0')}`,
       team: row.team,
+      completedMissions: row.completedMissions ?? 1,
       timeStr: row.timeStr || '00:00:000',
       status: row.status,
     });

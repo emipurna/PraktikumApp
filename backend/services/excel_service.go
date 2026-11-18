@@ -48,11 +48,12 @@ func GenerateLeaderboardExcel(sheetTitle string, ranked []RankedParticipant) (*e
 		"Peringkat",
 		"ID Peserta",
 		"Nama Peserta/Tim",
+		"Jumlah Misi yang Diselesaikan",
 		"Waktu (MM:SS:mmm)",
 		"Status",
 	}
 
-	colLetters := []string{"A", "B", "C", "D", "E"}
+	colLetters := []string{"A", "B", "C", "D", "E", "F"}
 	maxLengths := make([]int, len(headers))
 	for i, h := range headers {
 		maxLengths[i] = len(h)
@@ -176,6 +177,7 @@ func GenerateLeaderboardExcel(sheetTitle string, ranked []RankedParticipant) (*e
 			row.Rank,
 			pID,
 			row.Team,
+			row.CompletedMissions,
 			row.TimeStr,
 			row.Status,
 		}

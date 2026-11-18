@@ -34,6 +34,13 @@ export default function SpectatorView({
         </span>
       );
     }
+    if (status === 'Belum Full Misi') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+          <i className="fa-solid fa-hourglass-half text-amber-500"></i> Belum Full Misi
+        </span>
+      );
+    }
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
         <i className="fa-solid fa-circle-xmark text-rose-500 dark:text-rose-400"></i> Gugur
@@ -135,7 +142,7 @@ export default function SpectatorView({
             Papan Peringkat Kelompok Praktikum
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Urutan otomatis berdasarkan Waktu Tercepat
+            Urutan otomatis berdasarkan Penyelesaian Full 5 Misi &amp; Waktu Tercepat
           </p>
         </div>
       </div>
@@ -218,6 +225,7 @@ export default function SpectatorView({
                     <th className="py-3 px-4 text-center w-20">Peringkat</th>
                     <th className="py-3 px-3">ID Peserta</th>
                     <th className="py-3 px-4">Nama Peserta / Tim</th>
+                    <th className="py-3 px-4 text-center">Jumlah Misi yang Diselesaikan</th>
                     <th className="py-3 px-4 text-center">Waktu (Kecepatan)</th>
                     <th className="py-3 px-4 text-center">Status</th>
                   </tr>
@@ -245,6 +253,12 @@ export default function SpectatorView({
                             <span className="text-base">{row.team}</span>
                             {style.medal}
                           </div>
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <span className="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 px-3 py-1 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-700">
+                            <i className="fa-solid fa-list-check text-indigo-500"></i>
+                            {row.completedMissions ?? 1} Misi
+                          </span>
                         </td>
                         <td className="py-3.5 px-4 text-center">
                           <span
@@ -294,6 +308,14 @@ export default function SpectatorView({
                     <div className="flex items-center gap-4">
                       <div className="text-right">
                         <span className="block text-[10px] uppercase text-slate-400 font-bold">
+                          Jumlah Misi
+                        </span>
+                        <span className="font-bold text-base text-indigo-600 dark:text-indigo-400">
+                          {row.completedMissions ?? 1} Misi
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="block text-[10px] uppercase text-slate-400 font-bold">
                           Waktu
                         </span>
                         <span className="font-digital text-xl text-slate-700 dark:text-slate-200">
@@ -314,7 +336,7 @@ export default function SpectatorView({
           <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
             <i className="fa-solid fa-circle-info text-indigo-500 dark:text-indigo-400"></i>
             <span>
-              Total Peserta: <b>{rankedData.length} Tim</b> • Peringkat berdasarkan waktu tercepat
+              Total Peserta: <b>{rankedData.length} Tim</b> • Syarat Peringkat Utama: <b>Full 5 Misi</b> + Waktu Tercepat
             </span>
           </div>
         </div>
