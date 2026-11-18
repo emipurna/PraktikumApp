@@ -116,7 +116,7 @@ func UpdateLaneTimer(c *gin.Context) {
 		}
 		timer.ParticipantID = req.ParticipantID
 		timer.TeamName = req.TeamName
-		if req.CompletedMissions >= 1 && req.CompletedMissions <= 5 {
+		if req.CompletedMissions >= 0 && req.CompletedMissions <= 5 {
 			timer.CompletedMissions = req.CompletedMissions
 		}
 	default:

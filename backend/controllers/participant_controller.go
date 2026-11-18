@@ -96,8 +96,8 @@ func CreateParticipant(c *gin.Context) {
 	}
 
 	missions := req.CompletedMissions
-	if missions < 1 || missions > 5 {
-		missions = 1
+	if missions < 0 || missions > 5 {
+		missions = 0
 	}
 
 	participant := models.Participant{
@@ -148,7 +148,7 @@ func UpdateParticipant(c *gin.Context) {
 		participant.ParticipantID = req.ParticipantID
 	}
 	participant.Team = req.Team
-	if req.CompletedMissions >= 1 && req.CompletedMissions <= 5 {
+	if req.CompletedMissions >= 0 && req.CompletedMissions <= 5 {
 		participant.CompletedMissions = req.CompletedMissions
 	}
 	participant.TimeMs = req.TimeMs

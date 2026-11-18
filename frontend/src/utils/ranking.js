@@ -37,8 +37,8 @@ export function parseTimeStrToMs(timeStr) {
  */
 export function calculateLeaderboard(participants = []) {
   const sorted = [...participants].sort((a, b) => {
-    const missionsA = Number(a.completedMissions) || 1;
-    const missionsB = Number(b.completedMissions) || 1;
+    const missionsA = Number.isFinite(Number(a.completedMissions)) ? Number(a.completedMissions) : 1;
+    const missionsB = Number.isFinite(Number(b.completedMissions)) ? Number(b.completedMissions) : 1;
 
     // Prioritaskan peserta yang menyelesaikan misi lebih banyak (khususnya full 5 misi)
     if (missionsB !== missionsA) {
@@ -53,7 +53,7 @@ export function calculateLeaderboard(participants = []) {
 
   return sorted.map((item, idx) => {
     const rank = idx + 1;
-    const completedMissions = Number(item.completedMissions) || 1;
+    const completedMissions = Number.isFinite(Number(item.completedMissions)) ? Number(item.completedMissions) : 1;
 
     let computedStatus = item.customStatus;
     if (!computedStatus || computedStatus === 'Otomatis') {

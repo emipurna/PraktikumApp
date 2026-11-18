@@ -39,12 +39,12 @@ func CalculateLeaderboard(participants []models.Participant) []RankedParticipant
 
 	sort.SliceStable(sorted, func(i, j int) bool {
 		missionsA := sorted[i].CompletedMissions
-		if missionsA < 1 || missionsA > 5 {
-			missionsA = 1
+		if missionsA < 0 || missionsA > 5 {
+			missionsA = 0
 		}
 		missionsB := sorted[j].CompletedMissions
-		if missionsB < 1 || missionsB > 5 {
-			missionsB = 1
+		if missionsB < 0 || missionsB > 5 {
+			missionsB = 0
 		}
 
 		if missionsA != missionsB {
@@ -66,8 +66,8 @@ func CalculateLeaderboard(participants []models.Participant) []RankedParticipant
 	for idx, p := range sorted {
 		rank := idx + 1
 		missions := p.CompletedMissions
-		if missions < 1 || missions > 5 {
-			missions = 1
+		if missions < 0 || missions > 5 {
+			missions = 0
 		}
 
 		status := p.CustomStatus

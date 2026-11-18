@@ -69,7 +69,11 @@ export default function DualTimerLane({
     if (editingFieldRef.current !== 'teamName' && syncedTimer.teamName !== undefined) {
       setTeamName(syncedTimer.teamName || '');
     }
-    if (editingFieldRef.current !== 'completedMissions' && syncedTimer.completedMissions) {
+    if (
+      editingFieldRef.current !== 'completedMissions' &&
+      syncedTimer.completedMissions !== undefined &&
+      syncedTimer.completedMissions !== null
+    ) {
       setCompletedMissions(syncedTimer.completedMissions);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -195,7 +199,7 @@ export default function DualTimerLane({
     onSaveParticipant({
       participantId: finalId,
       team: trimmedTeam,
-      completedMissions: Number(completedMissions) || 1,
+      completedMissions: Number.isFinite(Number(completedMissions)) ? Number(completedMissions) : 0,
       timeMs: elapsedMs,
       timeStr: formatTimeMs(elapsedMs),
       customStatus: 'Otomatis',
@@ -373,7 +377,7 @@ export default function DualTimerLane({
             }}
             className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 dark:disabled:bg-slate-800/40"
           >
-            {[1, 2, 3, 4, 5].map((num) => (
+            {[0, 1, 2, 3, 4, 5].map((num) => (
               <option key={num} value={num}>
                 {num}
               </option>

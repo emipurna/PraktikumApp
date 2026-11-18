@@ -70,7 +70,7 @@ export default function AdminView({
       return;
     }
     const timeMs = parseTimeStrToMs(formTimeStr) || 60000;
-    const completedMissions = Number(formMissions) || 1;
+    const completedMissions = Number.isFinite(Number(formMissions)) ? Number(formMissions) : 0;
 
     if (editingItem) {
       onUpdateParticipant(editingItem.id, {
@@ -480,7 +480,7 @@ export default function AdminView({
                   onChange={(e) => setFormMissions(Number(e.target.value))}
                   className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-800 dark:text-slate-100"
                 >
-                  {[1, 2, 3, 4, 5].map((num) => (
+                  {[0, 1, 2, 3, 4, 5].map((num) => (
                     <option key={num} value={num}>
                       {num}
                     </option>
