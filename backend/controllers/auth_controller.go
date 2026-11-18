@@ -20,12 +20,13 @@ func LoginAdmin(c *gin.Context) {
 	}
 
 	expectedUser := os.Getenv("ADMIN_USERNAME")
-	if expectedUser == "" {
-		expectedUser = "admin"
-	}
 	expectedPass := os.Getenv("ADMIN_PASSWORD")
-	if expectedPass == "" {
-		expectedPass = "admin123"
+
+	if expectedUser == "" || expectedPass == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Kredensial admin belum dikonfigurasi di file .env server",
+		})
+		return
 	}
 
 	if req.Username != expectedUser || req.Password != expectedPass {

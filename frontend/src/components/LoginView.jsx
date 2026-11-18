@@ -22,11 +22,6 @@ export default function LoginView({ onLoginSuccess, onShowToast }) {
     } catch (err) {
       if (err.status === 401) {
         onShowToast('❌ Username atau password salah!');
-      } else if (username.trim() === 'admin' && password === 'admin123') {
-        // Fallback offline jika backend belum dijalankan
-        onLoginSuccess(username.trim());
-        setUsername('');
-        setPassword('');
       } else {
         onShowToast(`❌ ${err.message || 'Gagal login ke server'}`);
       }
@@ -55,7 +50,7 @@ export default function LoginView({ onLoginSuccess, onShowToast }) {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Username (contoh: admin)"
+              placeholder="Username"
               className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-all"
             />
           </div>
@@ -65,7 +60,7 @@ export default function LoginView({ onLoginSuccess, onShowToast }) {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password (contoh: admin123)"
+              placeholder="Password"
               className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-all"
             />
           </div>
@@ -77,13 +72,6 @@ export default function LoginView({ onLoginSuccess, onShowToast }) {
             {isLoading ? 'Memverifikasi...' : 'Masuk Sistem'}
           </button>
         </form>
-
-        <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 text-center">
-          <span className="text-xs text-slate-400 dark:text-slate-500">
-            Demo Akses Cepat: ketik <code className="font-semibold text-slate-600 dark:text-slate-300">admin</code> /{' '}
-            <code className="font-semibold text-slate-600 dark:text-slate-300">admin123</code>
-          </span>
-        </div>
       </div>
     </div>
   );
