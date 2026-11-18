@@ -69,6 +69,10 @@ func UpdateMatchStatus(c *gin.Context) {
 		return
 	}
 
+	if req.Status == "jeda" || req.Status == "selesai" {
+		PauseBoardTimers(boardID)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Status pertandingan berhasil diperbarui",
 		"match":   match,

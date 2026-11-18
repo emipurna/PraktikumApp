@@ -43,7 +43,7 @@ func ConnectDatabase() {
 
 	log.Println("Berhasil terhubung ke database PostgreSQL!")
 
-	if err := db.AutoMigrate(&models.Match{}, &models.Participant{}); err != nil {
+	if err := db.AutoMigrate(&models.Match{}, &models.Participant{}, &models.LaneTimer{}); err != nil {
 		log.Fatalf("Gagal melakukan auto-migrate tabel: %v", err)
 	}
 

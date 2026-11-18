@@ -59,6 +59,8 @@ func GetLeaderboard(c *gin.Context) {
 		"eventName":    match.EventName,
 		"eventDate":    match.EventDate,
 		"participants": ranked,
+		"timers":       EnsureBoardTimers(boardID),
+		"serverTimeMs": time.Now().UnixMilli(),
 	})
 }
 

@@ -11,6 +11,7 @@ import {
   createParticipant,
   updateParticipant,
   deleteParticipant,
+  updateLaneTimer,
 } from './utils/api';
 
 const INITIAL_DB = {
@@ -130,6 +131,9 @@ export default function App() {
     }
   });
 
+  const [timersByBoard, setTimersByBoard] = useState({});
+  const [serverClockOffset, setServerClockOffset] = useState(0);
+
   const [toastMsg, setToastMsg] = useState(null);
   const toastTimerRef = useRef(null);
 
@@ -146,6 +150,15 @@ export default function App() {
     try {
       const data = await fetchLeaderboard(boardId);
       setBackendConnected(true);
+      if (data.serverTimeMs) {
+        setServerClockOffset(data.serverTimeMs - Date.now());
+      }
+      if (data.timers) {
+        setTimersByBoard((prev) => ({
+          ...prev,
+          [boardId]: data.timers,
+        }));
+      }
       setDatabase((prev) => ({
         ...prev,
         [boardId]: data.participants || [],
@@ -171,12 +184,12 @@ export default function App() {
     syncBoardFromBackend(activeTab);
   }, [activeTab, syncBoardFromBackend]);
 
-  // Live polling setiap 3 detik pada mode Penonton agar leaderboard selalu real-time
+  // Live polling setiap 1.5 detik pada mode Penonton & Admin agar leaderboard & timer sinkron real-time
   useEffect(() => {
-    if (view !== 'user') return undefined;
+    if (view !== 'user' && view !== 'admin') return undefined;
     const interval = setInterval(() => {
       syncBoardFromBackend(activeTab);
-    }, 3000);
+    }, 1500);
     return () => clearInterval(interval);
   }, [view, activeTab, syncBoardFromBackend]);
 
@@ -378,6 +391,29 @@ export default function App() {
     }
   };
 
+  const handleSyncTimer = useCallback(
+    async (lane, action, payload = {}) => {
+      try {
+        const res = await updateLaneTimer(activeTab, lane, { action, ...payload });
+        if (res.serverTimeMs) {
+          setServerClockOffset(res.serverTimeMs - Date.now());
+        }
+        if (res.timer) {
+          setTimersByBoard((prev) => ({
+            ...prev,
+            [activeTab]: {
+              ...(prev[activeTab] || {}),
+              [lane]: res.timer,
+            },
+          }));
+        }
+      } catch (err) {
+        console.error('Timer sync error:', err);
+      }
+    },
+    [activeTab]
+  );
+
   return (
     <div className="flex flex-col h-screen overflow-hidden text-slate-800 dark:text-slate-100 bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
       {/* TOP NAVIGATION BAR */}
@@ -416,6 +452,9 @@ export default function App() {
             activeTab={activeTab}
             participants={currentParticipants}
             matchStatus={currentMatchStatus}
+            timers={timersByBoard[activeTab] || {}}
+            serverClockOffset={serverClockOffset}
+            onSyncTimer={handleSyncTimer}
             onChangeMatchStatus={handleChangeMatchStatus}
             onAddParticipant={handleAddParticipant}
             onUpdateParticipant={handleUpdateParticipant}

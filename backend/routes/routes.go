@@ -72,6 +72,9 @@ func SetupRouter() *gin.Engine {
 		api.PATCH("/matches/:boardId/status", controllers.UpdateMatchStatus)
 		api.PUT("/matches/:boardId/config", controllers.UpdateMatchConfig)
 
+		// Live Timer Sync
+		api.PUT("/timers/:boardId/:lane", controllers.UpdateLaneTimer)
+
 		// Leaderboard & Participants
 		api.GET("/leaderboard/:boardId", controllers.GetLeaderboard)
 		api.POST("/participants", controllers.CreateParticipant)

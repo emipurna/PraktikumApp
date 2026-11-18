@@ -63,3 +63,10 @@ export function deleteParticipant(id) {
     method: 'DELETE',
   });
 }
+
+export function updateLaneTimer(boardId, lane, payload) {
+  return request(`/timers/${boardId}/${lane}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}

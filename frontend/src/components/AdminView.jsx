@@ -6,6 +6,9 @@ export default function AdminView({
   activeTab,
   participants,
   matchStatus,
+  timers = {},
+  serverClockOffset = 0,
+  onSyncTimer,
   onChangeMatchStatus,
   onAddParticipant,
   onUpdateParticipant,
@@ -260,20 +263,28 @@ export default function AdminView({
       {/* Dual Timer Grid (Lajur A & Lajur B) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <DualTimerLane
+          laneKey="A"
           laneLabel="Lajur A"
           accentColor="bg-blue-500"
           isFrozen={isFrozen}
           matchStatus={matchStatus}
+          syncedTimer={timers.A}
+          serverClockOffset={serverClockOffset}
+          onSyncTimer={onSyncTimer}
           nextSuggestedId={nextIdA}
           onSaveParticipant={onAddParticipant}
           onShowToast={onShowToast}
         />
 
         <DualTimerLane
+          laneKey="B"
           laneLabel="Lajur B"
           accentColor="bg-indigo-500"
           isFrozen={isFrozen}
           matchStatus={matchStatus}
+          syncedTimer={timers.B}
+          serverClockOffset={serverClockOffset}
+          onSyncTimer={onSyncTimer}
           nextSuggestedId={nextIdB}
           onSaveParticipant={onAddParticipant}
           onShowToast={onShowToast}

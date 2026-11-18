@@ -2,10 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { formatTimeMs } from '../utils/ranking';
 
 export default function DualTimerLane({
+  laneKey = 'A',
   laneLabel = 'Lajur A',
   accentColor = 'bg-blue-500',
   isFrozen = false,
   matchStatus,
+  syncedTimer = null,
+  serverClockOffset = 0,
+  onSyncTimer,
   nextSuggestedId = 'TIM-005',
   onSaveParticipant,
   onShowToast,
@@ -19,9 +23,57 @@ export default function DualTimerLane({
   const [teamName, setTeamName] = useState('');
   const [completedMissions, setCompletedMissions] = useState(1);
 
-
   const intervalRef = useRef(null);
   const startTimeRef = useRef(0);
+  const lastLocalActionRef = useRef(0);
+  const editingFieldRef = useRef(null);
+  const metaDebounceRef = useRef(null);
+
+  const startLocalTicker = (baseElapsed, startedAtServerMs) => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    const localStart = startedAtServerMs - serverClockOffset - baseElapsed;
+    startTimeRef.current = localStart;
+    setElapsedMs(Math.max(0, Date.now() - localStart));
+    intervalRef.current = setInterval(() => {
+      setElapsedMs(Math.max(0, Date.now() - startTimeRef.current));
+    }, 10);
+  };
+
+  // Sinkronkan state timer dari server (saat HP/Laptop lain menekan Start/Jeda/Reset)
+  useEffect(() => {
+    if (!syncedTimer) return;
+    // Abaikan hasil poll lama sesaat setelah aksi lokal (hindari flicker)
+    if (Date.now() - lastLocalActionRef.current < 700) return;
+
+    if (syncedTimer.isRunning) {
+      setIsRunning(true);
+      setIsPaused(false);
+      startLocalTicker(syncedTimer.elapsedMs || 0, syncedTimer.startedAtMs || Date.now());
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      setIsRunning(false);
+      const serverElapsed = syncedTimer.elapsedMs || 0;
+      setElapsedMs(serverElapsed);
+      setIsPaused(serverElapsed > 0);
+    }
+
+    if (syncedTimer.mode && syncedTimer.mode !== mode) {
+      setMode(syncedTimer.mode);
+    }
+    if (editingFieldRef.current !== 'participantId' && syncedTimer.participantId !== undefined) {
+      setParticipantId(syncedTimer.participantId || '');
+    }
+    if (editingFieldRef.current !== 'teamName' && syncedTimer.teamName !== undefined) {
+      setTeamName(syncedTimer.teamName || '');
+    }
+    if (editingFieldRef.current !== 'completedMissions' && syncedTimer.completedMissions) {
+      setCompletedMissions(syncedTimer.completedMissions);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncedTimer, serverClockOffset]);
 
   // Hentikan timer otomatis apabila pertandingan diselesaikan atau dijeda global
   useEffect(() => {
@@ -36,8 +88,23 @@ export default function DualTimerLane({
   useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      if (metaDebounceRef.current) clearTimeout(metaDebounceRef.current);
     };
   }, []);
+
+  const syncMetaToServer = (nextMeta, immediate = false) => {
+    if (!onSyncTimer) return;
+    if (metaDebounceRef.current) clearTimeout(metaDebounceRef.current);
+    const run = () => {
+      lastLocalActionRef.current = Date.now();
+      onSyncTimer(laneKey, 'update_meta', nextMeta);
+    };
+    if (immediate) {
+      run();
+    } else {
+      metaDebounceRef.current = setTimeout(run, 400);
+    }
+  };
 
   const handleStart = () => {
     if (isFrozen) {
@@ -45,36 +112,43 @@ export default function DualTimerLane({
       return;
     }
     if (!isRunning) {
+      lastLocalActionRef.current = Date.now();
       startTimeRef.current = Date.now() - elapsedMs;
       intervalRef.current = setInterval(() => {
         setElapsedMs(Date.now() - startTimeRef.current);
       }, 10);
       setIsRunning(true);
       setIsPaused(false);
+      if (onSyncTimer) onSyncTimer(laneKey, 'start');
     }
   };
 
   const handlePause = () => {
     if (isRunning) {
+      lastLocalActionRef.current = Date.now();
       clearInterval(intervalRef.current);
       intervalRef.current = null;
       setIsRunning(false);
       setIsPaused(true);
+      if (onSyncTimer) onSyncTimer(laneKey, 'pause');
     }
   };
 
   const handleReset = () => {
+    lastLocalActionRef.current = Date.now();
     clearInterval(intervalRef.current);
     intervalRef.current = null;
     setIsRunning(false);
     setIsPaused(false);
     setElapsedMs(0);
+    if (onSyncTimer) onSyncTimer(laneKey, 'reset');
   };
 
   const handleClearInputs = () => {
     setParticipantId('');
     setTeamName('');
     setCompletedMissions(1);
+    syncMetaToServer({ mode, participantId: '', teamName: '', completedMissions: 1 }, true);
   };
 
   const handleSave = () => {
@@ -91,8 +165,16 @@ export default function DualTimerLane({
 
     if (mode === 'persiapan') {
       onShowToast(`⚙️ Waktu Persiapan ${trimmedTeam} selesai. Tidak masuk peringkat.`);
-      handleReset();
-      handleClearInputs();
+      lastLocalActionRef.current = Date.now();
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+      setIsRunning(false);
+      setIsPaused(false);
+      setElapsedMs(0);
+      setParticipantId('');
+      setTeamName('');
+      setCompletedMissions(1);
+      if (onSyncTimer) onSyncTimer(laneKey, 'clear_after_save');
       return;
     }
 
@@ -119,8 +201,13 @@ export default function DualTimerLane({
       customStatus: 'Otomatis',
     });
 
-    handleReset();
-    handleClearInputs();
+    lastLocalActionRef.current = Date.now();
+    setIsPaused(false);
+    setElapsedMs(0);
+    setParticipantId('');
+    setTeamName('');
+    setCompletedMissions(1);
+    if (onSyncTimer) onSyncTimer(laneKey, 'clear_after_save');
   };
 
   const dotClass = isRunning
@@ -194,7 +281,10 @@ export default function DualTimerLane({
       <div className="flex bg-slate-100 dark:bg-slate-800 rounded-xl p-1 border border-transparent dark:border-slate-700">
         <button
           type="button"
-          onClick={() => setMode('pertandingan')}
+          onClick={() => {
+            setMode('pertandingan');
+            syncMetaToServer({ mode: 'pertandingan', participantId, teamName, completedMissions }, true);
+          }}
           className={
             mode === 'pertandingan'
               ? 'flex-1 bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm py-2 rounded-lg font-bold text-sm transition-all'
@@ -205,7 +295,10 @@ export default function DualTimerLane({
         </button>
         <button
           type="button"
-          onClick={() => setMode('persiapan')}
+          onClick={() => {
+            setMode('persiapan');
+            syncMetaToServer({ mode: 'persiapan', participantId, teamName, completedMissions }, true);
+          }}
           className={
             mode === 'persiapan'
               ? 'flex-1 bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-300 shadow-sm py-2 rounded-lg font-bold text-sm transition-all'
@@ -227,7 +320,16 @@ export default function DualTimerLane({
               type="text"
               disabled={isFrozen}
               value={participantId}
-              onChange={(e) => setParticipantId(e.target.value)}
+              onFocus={() => { editingFieldRef.current = 'participantId'; }}
+              onBlur={() => {
+                editingFieldRef.current = null;
+                syncMetaToServer({ mode, participantId, teamName, completedMissions }, true);
+              }}
+              onChange={(e) => {
+                const val = e.target.value;
+                setParticipantId(val);
+                syncMetaToServer({ mode, participantId: val, teamName, completedMissions });
+              }}
               placeholder={nextSuggestedId}
               className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-mono text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 dark:disabled:bg-slate-800/40"
             />
@@ -240,7 +342,16 @@ export default function DualTimerLane({
               type="text"
               disabled={isFrozen}
               value={teamName}
-              onChange={(e) => setTeamName(e.target.value)}
+              onFocus={() => { editingFieldRef.current = 'teamName'; }}
+              onBlur={() => {
+                editingFieldRef.current = null;
+                syncMetaToServer({ mode, participantId, teamName, completedMissions }, true);
+              }}
+              onChange={(e) => {
+                const val = e.target.value;
+                setTeamName(val);
+                syncMetaToServer({ mode, participantId, teamName: val, completedMissions });
+              }}
               placeholder={`Nama Kelompok ${laneLabel.slice(-1)}...`}
               className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 dark:disabled:bg-slate-800/40"
             />
@@ -255,7 +366,11 @@ export default function DualTimerLane({
           <select
             disabled={isFrozen}
             value={completedMissions}
-            onChange={(e) => setCompletedMissions(Number(e.target.value))}
+            onChange={(e) => {
+              const val = Number(e.target.value);
+              setCompletedMissions(val);
+              syncMetaToServer({ mode, participantId, teamName, completedMissions: val }, true);
+            }}
             className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 dark:disabled:bg-slate-800/40"
           >
             {[1, 2, 3, 4, 5].map((num) => (
